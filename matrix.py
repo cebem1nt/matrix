@@ -1,4 +1,5 @@
 from fractions import Fraction
+import sys, os, subprocess
 
 class Matrix:
     """
@@ -17,6 +18,14 @@ class Matrix:
             self.columns = len(self._matrix[0])
             if not all(len(row) == self.columns for row in self._matrix):
                 raise ValueError("Invalid matrix dimensions")
+
+    def __str__(self):
+        string = "\n"
+        for row in self:
+            for item in row:
+                string += str(item) + " "
+            string += "\n"
+        return string
 
     def __eq__(self, other):
         return self._matrix == other.matrix
@@ -101,14 +110,6 @@ class Matrix:
     def __rmul__(self, other):
         return self.__mul__(other)
 
-    def __str__(self):
-        string = "\n"
-        for row in self:
-            for item in row:
-                string += str(item) + " "
-            string += "\n"
-        return string
-
     # Elementary operations:
 
     def swap_rows(self, R1: int, R2: int):
@@ -147,7 +148,7 @@ class Matrix:
 def has_same_dimensions(original: Matrix, other: Matrix) -> bool:
     return (original.columns == other.columns) and (original.rows == other.rows) 
 
-def inverse_matrix(matrix: Matrix, is_fractioning=False) -> Matrix:
+def inverse(matrix: Matrix, is_fractioning=False) -> Matrix:
     """ 
     Implementation of matrix inversion using Gauss elimination
         - Returns new inversed matrix
@@ -160,12 +161,12 @@ def inverse_matrix(matrix: Matrix, is_fractioning=False) -> Matrix:
     if is_fractioning:
         extended_matrix = Matrix(
             *[
-                [Fraction(value) for value in R] + [Fraction(1.0) if i == j else Fraction(0.0) for j in range(n)] for i, R in enumerate(matrix)
+                [Fraction(value) for value in R] + [Fraction(1) if i == j else Fraction(0) for j in range(n)] for i, R in enumerate(matrix)
             ]
         )
     else:
         extended_matrix = Matrix(
-            *[R + [1.0 if i == j else 0.0 for j in range(n)] for i, R in enumerate(matrix)]
+            *[R + [1 if i == j else 0 for j in range(n)] for i, R in enumerate(matrix)]
         )
 
     if not matrix.is_sqare_matrix(): 
@@ -180,7 +181,7 @@ def inverse_matrix(matrix: Matrix, is_fractioning=False) -> Matrix:
                     extended_matrix.swap_rows(i, j)
                     break
             else:
-                raise ValueError("Matrix is not invertible")
+                raise ValueError(f"Matrix is not invertible \n{matrix}")
 
             pivot = extended_matrix[i, i]
 
@@ -201,17 +202,58 @@ def inverse_matrix(matrix: Matrix, is_fractioning=False) -> Matrix:
         *[row[n:] for row in extended_matrix ]
     )
 
+def parse_instructions(file_dir: str):
+    """
+    Executes given file as a python instuction set. 
+    """
+
+    file_dir = os.path.abspath(os.path.expanduser(file_dir))
+
+    global_instructions = {
+        'Matrix': Matrix,
+        'inverse': inverse,
+        'has_same_dimensions': has_same_dimensions,
+        'show': print,
+        'print': print,
+    }
+
+    with open(file_dir) as f:
+        code = f.read()
+
+    print(f"\nCalculating file: {file_dir}\n")
+    print("################################")
+    print(code)
+    print("################################")
+    exec(code, global_instructions)
+    print("Calculation finished")
+
+def create_instruction_and_execute():
+    tmp_file = os.path.join(os.path.curdir, 'tmp_instruction.txt')
+    
+    editor = os.environ.get('EDITOR', 'vim')
+
+    with open(tmp_file, 'w') as f:
+        f.write("# Write your instructions here\n")
+
+    try:
+        subprocess.run([editor, tmp_file], check=True)
+        parse_instructions(tmp_file)
+
+    except FileNotFoundError:
+        print(f"Error: The editor '{editor}' was not found.")
+
+    except subprocess.CalledProcessError:
+        print(f"Error: The editor '{editor}' failed to open.")
+        
+    finally:
+        os.remove(tmp_file)
+
 if __name__ == "__main__":
-    A = Matrix([1, 2, 3],
-               [4, 5, 6])
-
-    B = Matrix([1, 2, 3],
-               [4, 5, 6])
-
-    C = Matrix([0, -1, 1],
-               [-1, 2, -1],
-               [1, -1, 2])
-
-    inversed = inverse_matrix(C)
-
-    print(inversed)
+    if len(sys.argv) == 2:
+        instruction = sys.argv[1]
+        parse_instructions(instruction)
+    elif len(sys.argv) == 1:
+        # Open a text editor in tmp location and write instruction set
+        create_instruction_and_execute()
+    else:
+        print("Incorrect arguments provided!")
