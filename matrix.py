@@ -1,6 +1,10 @@
 from fractions import Fraction
 import sys, os, subprocess
 
+type Number = int | float
+type Index = int | tuple[int]
+type Row = list[Number]
+
 class Matrix:
     """
     2D Matrix implementation. 
@@ -8,29 +12,37 @@ class Matrix:
         - To access row & column use [i, j] instead of [i][j] 
     """
 
-    def __init__(self, *rows: list[int | float]):
-        self._matrix = list(rows)
-        self.rows = len(self._matrix)
-
-        if not self._matrix:
-            self.columns = 0
+    def __init__(self, *rows: Row, matrix: list[Row] | None = None):
+        if matrix: 
+            self._matrix = matrix
         else:
-            self.columns = len(self._matrix[0])
-            if not all(len(row) == self.columns for row in self._matrix):
-                raise ValueError("Invalid matrix dimensions")
+            self._matrix = list(rows)
+       
+        if not self._matrix:
+            self.rows = 0
+            self.columns = 0
+            return
+
+        self.rows = len(self._matrix)
+        self.columns = len(self._matrix[0])
+
+        if any(len(r) != self.columns for r in self._matrix):
+            raise ValueError("Invalid matrix dimensions")
 
     def __str__(self):
         string = "\n"
+
         for row in self:
             for item in row:
                 string += str(item) + " "
             string += "\n"
+
         return string
 
     def __eq__(self, other):
-        return self._matrix == other.matrix
+        return self._matrix == other._matrix
 
-    def __getitem__(self, index: int | tuple[int]):
+    def __getitem__(self, index: Index):
         if isinstance(index, int):
             return self._matrix[index]
 
@@ -41,7 +53,7 @@ class Matrix:
         else:
             raise IndexError("Invalid index")
 
-    def __setitem__(self, index: int | tuple[int], value: int | float):
+    def __setitem__(self, index: Index, value: Number):
         if isinstance(index, int):
             self._matrix[index] = value
 
@@ -64,11 +76,13 @@ class Matrix:
 
         for i in range(self.rows):
             row = []
+
             for j in range(self.columns):
                 row.append(self[i, j] + other[i, j])
+
             result_matrix.append(row)
         
-        return Matrix(*result_matrix)
+        return Matrix(matrix=result_matrix)
 
     def __sub__(self, other):
         if not has_same_dimensions(self, other):
@@ -78,11 +92,13 @@ class Matrix:
 
         for i in range(self.rows):
             row = []
+            
             for j in range(self.columns):
                 row.append(self[i, j] - other[i, j])
+
             result_matrix.append(row)
         
-        return Matrix(*result_matrix)
+        return Matrix(matrix=result_matrix)
 
     def __mul__(self, other):
         result_matrix = []
@@ -90,42 +106,58 @@ class Matrix:
         if isinstance(other, (int, float)):
             for row in self:
                 new_row = []
+
                 for x in row:
                     new_row.append(x * other)
                 result_matrix.append(new_row)
-            return Matrix(*result_matrix)
+
         else:
             if self.columns != other.rows:
                 raise AssertionError("Matrices don't have compatible dimensions")
             
             for i in range(self.rows):
                 row = []
+
                 for j in range(other.columns):
                     summed = 0
+
                     for k in range(self.columns):
                         summed += self[i, k] + other[k, j]
                     row.append(summed)
+
                 result_matrix.append(row)
+
+        return Matrix(matrix=result_matrix)
 
     def __rmul__(self, other):
         return self.__mul__(other)
 
     # Elementary operations:
 
-    def swap_rows(self, R1: int, R2: int):
-        """
-        Swaps first row with second row
-        """
+    def swap_rows(self, R1: int, 
+                        R2: int):
+
+        """Swaps first row with second row"""
+
         self[R1], self[R2] = self[R2], self[R1]
 
-    def multiply_row(self, R: int, factor=1):
+
+    def multiply_row(self, R: int, 
+                           factor: Number = 1):
+
+        """Multiplies given row by a factor"""
+
         self[R] = [x * factor for x in self[R]]
 
-    def add_rows(self, R1: int, R2: int, factor=1):
-        """
-        Adds elements of R2 to R1 
-        """
+
+    def add_rows(self, R1: int, 
+                       R2: int, 
+                       factor: Number =1):
+
+        """Adds elements of R2 to R1"""
+
         modified_row = []
+
         for x1, x2 in zip(self[R1], self[R2]):
             modified_row.append(x1 + factor*x2)
 
@@ -136,17 +168,85 @@ class Matrix:
 
     def transpose(self):
         transposed = []
+
         for j in range(self.columns):
             row = []
+
             for i in range(self.rows):
                 row.append(self[i, j])
+
             transposed.append(row)
             
         self._matrix = transposed
         self.columns, self.rows = self.rows, self.columns
 
+# Helping / lib functions
+
 def has_same_dimensions(original: Matrix, other: Matrix) -> bool:
     return (original.columns == other.columns) and (original.rows == other.rows) 
+
+def __choose_expansion_row(A: Matrix):
+    best_row = 0
+    best_zero_count = -1
+
+    n = A.rows
+
+    for i in range(n):
+        zero_count = sum(1 for x in A[i] if x == 0)
+
+        if zero_count > best_zero_count:
+            best_zero_count = zero_count
+            best_row = i
+
+    return best_row
+
+
+def __minor_matrix(A: Matrix, 
+                   row: int, 
+                   col: int):
+
+    return Matrix(
+        matrix=[ 
+            [A[i, j] for j in range(A.rows) if j != col]
+            for i in range(A.rows) if i != row 
+        ]
+    )
+
+def det(A: Matrix) -> Number:
+    """
+    Determinant of a matrix using Laplace expansion algorithm (simple)
+    """
+
+    if not A.is_sqare_matrix(): 
+        raise ValueError(f"Given matrix {A} is not square matrix")
+
+    n = A.rows
+
+    if n == 1:
+        # Base case
+        return A[0, 0];
+    elif n == 2:
+        # 2x2 submatrix case
+        # just do a*d - b*c
+        return (A[0, 0] * A[1, 1]) - (A[0, 1] * A[1, 0])
+
+    r = __choose_expansion_row(A)
+    res = 0
+    sign = 1
+
+    for j in range(n):
+        a = A[r, j]
+    
+        if a == 0:
+            sign = -sign
+            continue
+            
+        M = __minor_matrix(A, r, j)
+        res += sign * a * det(M)
+        sign = -sign
+
+    return res
+
 
 def inverse(matrix: Matrix, is_fractioning=False) -> Matrix:
     """ 
@@ -158,19 +258,21 @@ def inverse(matrix: Matrix, is_fractioning=False) -> Matrix:
 
     n = matrix.rows
 
+    if not matrix.is_sqare_matrix(): 
+        raise ValueError(f"Given matrix {matrix} is not square matrix")
+
     if is_fractioning:
         extended_matrix = Matrix(
-            *[
-                [Fraction(value) for value in R] + [Fraction(1) if i == j else Fraction(0) for j in range(n)] for i, R in enumerate(matrix)
+            matrix=[
+                  [Fraction(x) for x in row]  # convert row values to Fraction
+                + [Fraction(1) if i == j else Fraction(0) for j in range(n)]  # append identity row
+                  for i, row in enumerate(matrix)
             ]
         )
     else:
         extended_matrix = Matrix(
-            *[R + [1 if i == j else 0 for j in range(n)] for i, R in enumerate(matrix)]
+            matrix=[R + [1 if i == j else 0 for j in range(n)] for i, R in enumerate(matrix)]
         )
-
-    if not matrix.is_sqare_matrix(): 
-        raise ValueError("Given matrix is not square matrix")
 
     for i in range(n):
         pivot = extended_matrix[i, i]
@@ -199,7 +301,7 @@ def inverse(matrix: Matrix, is_fractioning=False) -> Matrix:
             extended_matrix.add_rows(j, i, factor)
 
     return Matrix(
-        *[row[n:] for row in extended_matrix ]
+        matrix=[row[n:] for row in extended_matrix]
     )
 
 def parse_instructions(file_dir: str):
@@ -213,6 +315,7 @@ def parse_instructions(file_dir: str):
         'Matrix': Matrix,
         'inverse': inverse,
         'has_same_dimensions': has_same_dimensions,
+        'det': det,
         'show': print,
         'print': print,
     }

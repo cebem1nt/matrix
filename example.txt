@@ -10,6 +10,19 @@ B = Matrix(
     [1, 2, 3]
 )
 
+C = Matrix(
+    [16, 1, 1, 12],
+    [4, -2, 5, 21],
+    [2, 8, 7, -13],
+    [12, 4, 7, 12]
+)
+
 show(A+B)
+
+show(A == B)
+
+show(A*B)
+
+show(det(C))
 
 show(inverse(A, is_fractioning=True))
