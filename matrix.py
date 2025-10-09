@@ -1,6 +1,8 @@
 from fractions import Fraction
 import sys, os, subprocess
 
+# The scariest code of the universe ....
+
 type Number = int | float
 type Index = int | tuple[int]
 type Row = list[Number]
@@ -12,12 +14,15 @@ class Matrix:
         - To access row & column use [i, j] instead of [i][j] 
         - Optionally, instead of rows you can provide a matrix
         - If no matrix provided, you should pass x, y as dimensions of a matrix
+        - You can set is_fractions to True, so each number will be calculated as fraction
     """
 
-    def __init__(self, *rows: Row, 
-                 matrix: list[Row] | None = None, 
-                 x: Index | None = None, 
-                 y: Index | None = None ):
+    def __init__(self, *rows: Row, matrix: list[Row] = None, 
+                 is_fractions = False,
+                 x: Index = None, 
+                 y: Index = None ):
+
+        self.is_fractions = is_fractions
 
         if matrix: 
             self._matrix = matrix
@@ -33,14 +38,17 @@ class Matrix:
             self._matrix = [ 
                 [0 for _ in range(y)] for _ in range(x)
             ]
-            
-            return
 
-        self.rows = len(self._matrix)
-        self.columns = len(self._matrix[0])
+        else:
+            self.rows = len(self._matrix)
+            self.columns = len(self._matrix[0])
+
 
         if any(len(r) != self.columns for r in self._matrix):
             raise ValueError("Invalid matrix dimensions")
+
+        if is_fractions:
+            self.to_fraction_matrix()
 
     def __str__(self):
         string = "\n"
@@ -67,6 +75,9 @@ class Matrix:
             raise IndexError("Invalid index")
 
     def __setitem__(self, index: Index, value: Number):
+        if (self.is_fractions):
+            value = Fraction(value)
+
         if isinstance(index, int):
             self._matrix[index] = value
 
@@ -193,10 +204,16 @@ class Matrix:
         self._matrix = transposed
         self.columns, self.rows = self.rows, self.columns
 
+    def to_fraction_matrix(self):
+        for i in range(self.rows):
+            for j in range(self.columns):
+                self[i, j] = Fraction(self[i, j])
+
 # Helping / lib functions
 
 def has_same_dimensions(original: Matrix, other: Matrix) -> bool:
-    return (original.columns == other.columns) and (original.rows == other.rows) 
+    return (original.columns == other.columns) and \
+            (original.rows == other.rows) 
 
 def __choose_expansion_row(A: Matrix):
     best_row = 0
@@ -261,7 +278,7 @@ def det(A: Matrix) -> Number:
     return res
 
 
-def inverse(matrix: Matrix, is_fractioning=False) -> Matrix:
+def inverse(matrix: Matrix, is_fractions=False) -> Matrix:
     """ 
     Implementation of matrix inversion using Gauss elimination
         - Returns new inversed matrix
@@ -274,7 +291,7 @@ def inverse(matrix: Matrix, is_fractioning=False) -> Matrix:
     if not matrix.is_sqare_matrix(): 
         raise ValueError(f"Given matrix {matrix} is not square matrix")
 
-    if is_fractioning:
+    if is_fractioning or matrix.is_fractions:
         extended_matrix = Matrix(
             matrix=[
                   [Fraction(x) for x in row]  # convert row values to Fraction
@@ -284,7 +301,10 @@ def inverse(matrix: Matrix, is_fractioning=False) -> Matrix:
         )
     else:
         extended_matrix = Matrix(
-            matrix=[R + [1 if i == j else 0 for j in range(n)] for i, R in enumerate(matrix)]
+            matrix=[
+                R + [1 if i == j else 0 for j in range(n)] 
+                for i, R in enumerate(matrix)
+            ]
         )
 
     for i in range(n):
