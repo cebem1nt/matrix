@@ -10,17 +10,30 @@ class Matrix:
     2D Matrix implementation. 
         - Takes rows only instead of default [[], [], []]
         - To access row & column use [i, j] instead of [i][j] 
+        - Optionally, instead of rows you can provide a matrix
+        - If no matrix provided, you should pass x, y as dimensions of a matrix
     """
 
-    def __init__(self, *rows: Row, matrix: list[Row] | None = None):
+    def __init__(self, *rows: Row, 
+                 matrix: list[Row] | None = None, 
+                 x: Index | None = None, 
+                 y: Index | None = None ):
+
         if matrix: 
             self._matrix = matrix
         else:
             self._matrix = list(rows)
        
         if not self._matrix:
-            self.rows = 0
-            self.columns = 0
+            if not x or not y:
+                raise ValueError("You should provide matrix dimensions (x, y)")
+
+            self.rows = x
+            self.columns = y
+            self._matrix = [ 
+                [0 for _ in range(y)] for _ in range(x)
+            ]
+            
             return
 
         self.rows = len(self._matrix)
