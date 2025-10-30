@@ -23,6 +23,12 @@ show(A == B)
 
 show(A*B)
 
-show(det(C))
+E = Matrix(
+    [2, 1, 6],
+    [4, 3, 14],
+)
 
+show(lineq(E))
+
+show(det(C))
 show(inverse(A, is_fractioning=True))

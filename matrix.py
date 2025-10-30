@@ -277,8 +277,40 @@ def det(A: Matrix) -> Number:
 
     return res
 
+def gauss(matrix: Matrix):
+    """ 
+    Applies Gaussian elimination to given matrix
+    """
 
-def inverse(matrix: Matrix, is_fractions=False) -> Matrix:
+    n = matrix.rows
+    
+    for i in range(n):
+        pivot = matrix[i, i]
+
+        if pivot == 0:
+            for j in range(i+1, n):
+                if matrix[j, i] != 0:
+                    matrix.swap_rows(i, j)
+                    break
+            else:
+                raise ValueError(f"Can't apply Gaussian elimination to\n {matrix}")
+
+            pivot = matrix[i, i]
+
+        factor = 1/pivot
+        matrix.multiply_row(i, factor)
+
+        for j in range(n):
+            if j != i:
+                factor = -matrix[j, i]
+                matrix.add_rows(j, i, factor)
+
+    for i in range(n-1, -1, -1):
+        for j in range(i-1, -1, -1):
+            factor = -matrix[j, i]
+            matrix.add_rows(j, i, factor)
+
+def inverse(matrix: Matrix, is_fractioning=False) -> Matrix:
     """ 
     Implementation of matrix inversion using Gauss elimination
         - Returns new inversed matrix
@@ -307,34 +339,22 @@ def inverse(matrix: Matrix, is_fractions=False) -> Matrix:
             ]
         )
 
-    for i in range(n):
-        pivot = extended_matrix[i, i]
-
-        if pivot == 0:
-            for j in range(i+1, n):
-                if extended_matrix[j, i] != 0:
-                    extended_matrix.swap_rows(i, j)
-                    break
-            else:
-                raise ValueError(f"Matrix is not invertible \n{matrix}")
-
-            pivot = extended_matrix[i, i]
-
-        factor = 1/pivot
-        extended_matrix.multiply_row(i, factor)
-
-        for j in range(n):
-            if j != i:
-                factor = -extended_matrix[j, i]
-                extended_matrix.add_rows(j, i, factor)
-
-    for i in range(n-1, -1, -1):
-        for j in range(i-1, -1, -1):
-            factor = -extended_matrix[j, i]
-            extended_matrix.add_rows(j, i, factor)
+    gauss(extended_matrix)
 
     return Matrix(
-        matrix=[row[n:] for row in extended_matrix]
+        matrix=[row[matrix.rows:] for row in extended_matrix]
+    )
+
+def lineq(matrix: Matrix):
+    """
+    Takes in allready composed augmented matrix.
+    Returns a matrix where each row is solved unknown
+    """
+
+    gauss(matrix)
+
+    return Matrix(
+        matrix=[row[matrix.rows:] for row in matrix]
     )
 
 def parse_instructions(file_dir: str):
@@ -347,6 +367,7 @@ def parse_instructions(file_dir: str):
     global_instructions = {
         'Matrix': Matrix,
         'inverse': inverse,
+        'lineq': lineq,
         'has_same_dimensions': has_same_dimensions,
         'det': det,
         'show': print,
