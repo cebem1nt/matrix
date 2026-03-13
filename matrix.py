@@ -1,3 +1,4 @@
+#!/bin/env python3
 from fractions import Fraction
 import sys, os, subprocess
 
@@ -143,11 +144,11 @@ class Matrix:
                 row = []
 
                 for j in range(other.columns):
-                    summed = 0
+                    total = 0
 
                     for k in range(self.columns):
-                        summed += self[i, k] + other[k, j]
-                    row.append(summed)
+                        total += self[i, k] * other[k, j]
+                    row.append(total)
 
                 result_matrix.append(row)
 
